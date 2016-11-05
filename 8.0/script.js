@@ -78,20 +78,65 @@ d3.queue()
     });
 
 function draw(rows){
-    //IMPORTANT: data transformation
+ //IMPORTANT: data transformation
     var flightsByTravelDate = d3.nest().key(function(d){return d.travelDate})
         .entries(rows);
 
     flightsByTravelDate.forEach(function(day){
        day.averagePrice = d3.mean(day.values, function(d){return d.price});
     });
+    flightsByTravelDate.sort(function(a,b){return new Date(a.key)-new Date(b.key)})
 
-    console.log(flightsByTravelDate);
+    console.table(flightsByTravelDate);
 
     //Draw dots
+var update=plot.selectAll('.node')
+    .data(rows, function(d){d.id})
 
+var enter=update.enter()
+    .append('circle')
+    .attr('class','node')
+    .on('click',function(d){console.log(d.price)})
+    .on('mouseenter',function(d){
+        var tooltip = d3.select('.custom-tooltip');
+        tooltip.select('.title')
+            .html(d.airline + ', ' + d.travelDate.toLocaleDateString());
+            tooltip.select('.value')
+                .html('Price: $'+d.price);
+
+            tooltip.transition().style('opacity',1);
+
+            d3.select(this).style('stroke-width','1px');
+        })
+        .on('mousemove',function(d){
+            var tooltip = d3.select('.custom-tooltip');
+            var xy = d3.mouse( d3.select('.container').node() );
+            tooltip
+                .style('left',xy[0]+10+'px')
+                .style('top',xy[1]+10+'px');
+        })
+        .on('mouseleave',function(d){
+            var tooltip = d3.select('.custom-tooltip');
+            tooltip.transition().style('opacity',0);
+            d3.select(this).style('stroke-width','0px');
+        });
+    update.exit().remove();
+    update
+        .merge(enter)
+        .attr('fill',function(d){return scaleColor(d.airline)})
+        .attr('r',3)
+        .attr('cy',function(d){return scaleY(d.price)})
+        .attr('cx',function(d){return scaleX(d.travelDate)})
 
     //Draw <path>
+    plot.select('.time-series')       
+        .datum(flightsByTravelDate)
+        .transition()
+        .attr('d',function(el){return lineGenerator(flightsByTravelDate);})
+        .style('fill','none')
+        .style('stroke-width',2+'px')
+        .style('stroke',function(co){return scaleColor(co[0].values[0].airline)})
+       
 }
 
 function parse(d){
